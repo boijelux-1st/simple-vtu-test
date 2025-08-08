@@ -1,113 +1,68 @@
 <!doctype html>
 <html>
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>VTU Admin Dashboard</title>
-<style>
-body { font-family: Arial, sans-serif; padding: 20px; background: #f4f6f8; }
-h1 { color: #003366; }
-#dataBox { background:#fff; padding:15px; border-radius:8px; margin-bottom:20px; }
-.admin { background:#fff; padding:15px; border-radius:8px; }
-input, select, button { padding:8px; margin-top:6px; }
-textarea { width:100%; height:80px; margin-top:6px; }
-label { display:block; margin-top:10px; }
-</style>
+<meta charset="utf-8">
+<title>VTU.ng Admin Dashboard</title>
 </head>
 <body>
+<h1>VTU.ng Dashboard</h1>
 
-<h1>VTU Service Admin Dashboard</h1>
+<section>
+  <h2>Transactions</h2>
+  <button onclick="fetchStatus()">Refresh</button>
+  <ul id="tx"></ul>
+</section>
 
-<div id="dataBox">
-  <h2>Live Data</h2>
-  <p><b>Balance:</b> <span id="balance">Loading...</span></p>
-  <p><b>Transactions:</b></p>
-  <ul id="transactions"><li>Loading...</li></ul>
-  <button onclick="fetchData()">Refresh Now</button>
-</div>
+<section>
+  <h2>Recharge</h2>
+  <input id="phone" placeholder="Phone">
+  <input id="amount" placeholder="Amount">
+  <input id="network" placeholder="Network">
+  <button onclick="recharge()">Send</button>
+</section>
 
-<div class="admin">
-  <h2>Admin Controls</h2>
-  <label>Update Price
-    <input type="number" id="newPrice" placeholder="Enter new price"/>
-    <button onclick="updatePrice()">Save Price</button>
-  </label>
-
-  <label>Send Custom API Command
-    <textarea id="customBody" placeholder='{"param":"value"}'></textarea>
-    <button onclick="sendCustom()">Send Command</button>
-  </label>
-</div>
+<section>
+  <h2>Update Price</h2>
+  <input id="product" placeholder="Product ID">
+  <input id="price" placeholder="New Price">
+  <button onclick="updatePrice()">Update</button>
+</section>
 
 <script>
-const VTU_API_URL = "https://example.com/api"; // <-- saka VTU API base URL
-const API_KEY = "YOUR_ADMIN_KEY"; // <-- saka key/token naka
+async function fetchStatus() {
+  const res = await fetch('/api/status');
+  const data = await res.json();
+  const list = document.getElementById('tx');
+  list.innerHTML = '';
+  (data.data || []).forEach(t => {
+    const li = document.createElement('li');
+    li.textContent = `${t.date} - ${t.amount} - ${t.status}`;
+    list.appendChild(li);
+  });
+}
 
-async function fetchData() {
-  try {
-    const res = await fetch(`${VTU_API_URL}/status`, {
-      headers: { "Authorization": `Bearer ${API_KEY}` }
-    });
-    const data = await res.json();
-    document.getElementById("balance").textContent = data.balance || "N/A";
-
-    const txList = document.getElementById("transactions");
-    txList.innerHTML = "";
-    (data.transactions || []).forEach(tx => {
-      const li = document.createElement("li");
-      li.textContent = `${tx.date}: ${tx.amount} (${tx.status})`;
-      txList.appendChild(li);
-    });
-  } catch (err) {
-    console.error(err);
-    alert("Error fetching data");
-  }
+async function recharge() {
+  const phone = document.getElementById('phone').value;
+  const amount = document.getElementById('amount').value;
+  const network = document.getElementById('network').value;
+  const res = await fetch('/api/recharge', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ phone, amount, network })
+  });
+  alert(await res.text());
 }
 
 async function updatePrice() {
-  const price = document.getElementById("newPrice").value;
-  if (!price) return alert("Enter price first");
-  try {
-    const res = await fetch(`${VTU_API_URL}/update-price`, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${API_KEY}`
-      },
-      body: JSON.stringify({ price: Number(price) })
-    });
-    if (!res.ok) throw new Error(await res.text());
-    alert("Price updated successfully!");
-    fetchData();
-  } catch (err) {
-    alert("Update failed: " + err.message);
-  }
+  const product_id = document.getElementById('product').value;
+  const new_price = document.getElementById('price').value;
+  const res = await fetch('/api/update-price', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ product_id, new_price })
+  });
+  alert(await res.text());
 }
-
-async function sendCustom() {
-  const bodyText = document.getElementById("customBody").value;
-  try {
-    const res = await fetch(`${VTU_API_URL}/admin-action`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${API_KEY}`
-      },
-      body: bodyText
-    });
-    if (!res.ok) throw new Error(await res.text());
-    alert("Command sent!");
-    fetchData();
-  } catch (err) {
-    alert("Command failed: " + err.message);
-  }
-}
-
-// initial load
-fetchData();
-// auto-refresh every 10s
-setInterval(fetchData, 10000);
 </script>
-
 </body>
 </html>
